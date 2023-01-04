@@ -1,6 +1,5 @@
 from django import forms
-from .models import User
-# from .models import UserPW
+from .models import User, UserPW
 non_allowed_usernames = ['abc']
 
 #The class will store all the required input fields
@@ -80,3 +79,24 @@ class LoginForm(forms.Form):
         if qs.count() != 1:
             raise forms.ValidationError("This is an invalid user.")
         return username
+
+class UserPWForm(forms.Form):
+    PW_TYPES = [('confidentail', 'confidentail'),('sharable', 'sharable')]
+    title = forms.CharField(widget=forms.TextInput(
+        attrs={
+        "class": "form-control"
+    }))
+    password = forms.CharField(widget=forms.TextInput(
+        attrs={
+        "class": "form-control"
+    }))
+    type = forms.ChoiceField(choices=PW_TYPES, widget=forms.RadioSelect())
+
+class UserUpdateForm(forms.ModelForm):
+    class Meta:
+        model=UserPW
+        fields=['title','password', 'type']
+
+
+
+    

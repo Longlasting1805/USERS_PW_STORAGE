@@ -9,6 +9,7 @@ from .models import User
 from django.db.models import Q
 from .forms import *
 from django.shortcuts import render
+from .models import UserPW
 
 #render home screen as default
 def home_page(request):
@@ -57,4 +58,90 @@ def login_page(request):
 @login_required(login_url=login_page)
 def logged_out_page(request):
     logout(request)
-    return render(request, "pw_storage/user_account/logged_out.html")
+    return render(request, "pw_storage/user_account/logged_out.html")  
+
+@login_required(login_url=login_page)
+def user_pw_all(request):
+    if request.user.is_authenticated:
+        message.success(request, "Logggged in as %s", request.user)
+
+    logged_in_user = request.user
+    logged_in_user_pws = UserPW.objects.filter(user=logged_in_user).order_by('-date')
+    
+    if not logged_in_user_pws:
+        message = 'pleese create a password'
+        return render(request, "pw_storage/user_password/user_pw_all.html", {'no_pws': 
+        message})
+
+    return render(request, "pw_storage/user_password/user_pw_all.html", {'pws':
+     logged_in_user_pws})
+
+@login_required
+def edit_post(request, pk):
+    user_post = UserPW.objects.get(id=pk)
+    form = UserUpdateForm(instance=user_post)
+    if form.is_valid():
+           form.save()
+           return redirect('/')
+
+    if request.method == 'POST':
+        form = UserUpdateForm(requst.POST, instance=user_post)
+        if form.is_valid():
+            form.save()
+            return redirect('')
+
+    context = {'form', form}
+
+    return render(request, 'pw_storage/user_password/edit.html', context)
+
+@login_required
+def delete(request, pk):
+    user_post = UserPW.objects.get(id=pk)
+
+    if request.method == 'POST':
+        user_post.delete
+        return redirect('/')
+
+    context = {'item': user_post}
+
+    return render(request, 'pw_storage/user_password/delete.html', context) 
+
+
+@login_required(login_url=login_page)
+def user_pw_add(request):
+    form = UserPWForm(request.POST or None)
+    if request.user.is_authenticated:
+        messages.success(request, "Logged in as %s" % request.user)
+    logged_in_user = request.user
+    if form.is_valid():
+        title = form.cleaned_data.get("title")
+        password = form.cleaned_data.get("password")
+        type = form.cleaned_data.get("type")
+        if UserPW.objects.filter(title=title) and UserPW.objects.filter(user=request.user):
+            messages.success(request, "---There is already a pw created by that name---")
+        else:
+            try:
+                UserPW.objects.create(title=title, password=password, type=type, user=logged_in_user)
+                messages.success(request, "---Sucessfully added new pw field for your storage---")
+            except Exception as e:
+                raise e
+            
+    return render(request, "pw_storage/user_password/user_pw_add.html", {'form': form})
+
+@login_required(login_url=login_page)
+def user_pw_search(request):
+    if request.user.is_authenticated:
+        messages.success(request, "Logged in as %s" % request.user)
+    logged_in_user = request.user  
+    logged_in_user_pws = UserPW.objects.filter(user=logged_in_user)
+    if request.method == "POST":
+        searched = request.POST.get("password_search", "")
+        users_pws = logged_in_user_pws.values()
+        if users_pws.filter(title=searched):
+            user_pw = UserPW.objects.filter(Q(title=searched)).values()
+            return render(request, "pw_storage/user_password/user_pw_search.html", {'user_pw': user_pw})
+        else:
+            messages.error(request, "---YOUR SEARCH RESULT DOESN'T EXIST---")
+   
+
+    return render(request, "pw_storage/user_password/user_pw_search.html", {'pws': logged_in_user_pws})
